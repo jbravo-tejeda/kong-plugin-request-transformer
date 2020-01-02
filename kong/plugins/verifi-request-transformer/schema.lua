@@ -19,6 +19,10 @@ local function check_for_value(entry)
   return true
 end
 
+local function validate_body_to_header(entry)
+  return true
+end
+
 
 local function validate_headers(pair, validate_value)
   local name, value = pair:match("^([^:]+):*(.-)$")
@@ -70,6 +74,11 @@ local colon_strings_array = {
   elements = { type = "string", custom_validator = check_for_value }
 }
 
+local csv_body_to_header_strings_array = {
+  type = "array",
+  default = {},
+  elements = { type = "string", custom_validator = validate_body_to_header }
+}
 
 local colon_header_value_array = {
   type = "array",
@@ -87,13 +96,22 @@ local colon_strings_array_record = {
   },
 }
 
+local colon_strings_add_array_record = {
+  type = "record",
+  fields = {
+    { body = colon_strings_array },
+    { bodytoheaders = csv_body_to_header_strings_array },
+    { headers = colon_header_value_array },
+    { querystring = colon_strings_array },
+  },
+}
+
 
 local colon_headers_array = {
   type = "array",
   default = {},
   elements = { type = "string", match = "^[^:]+:.*$", custom_validator = validate_colon_headers },
 }
-
 
 local colon_rename_strings_array_record = {
   type = "record",
@@ -104,14 +122,13 @@ local colon_rename_strings_array_record = {
   },
 }
 
-
 local colon_strings_array_record_plus_uri = tx.deepcopy(colon_strings_array_record)
 local uri = { uri = { type = "string" } }
 table.insert(colon_strings_array_record_plus_uri.fields, uri)
 
 
 return {
-  name = "request-transformer",
+  name = "verifi-request-transformer",
   fields = {
     { config = {
         type = "record",
@@ -120,7 +137,7 @@ return {
           { remove  = strings_array_record },
           { rename  = colon_rename_strings_array_record },
           { replace = colon_strings_array_record_plus_uri },
-          { add     = colon_strings_array_record },
+          { add     = colon_strings_add_array_record },
           { append  = colon_strings_array_record },
         }
       },

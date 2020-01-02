@@ -149,11 +149,11 @@ local function iter(config_array)
 
     local res, err = param_value(current_value, config_array)
     if err then
-      return error("[request-transformer] failed to render the template ",
+      return error("[verifi-request-transformer] failed to render the template ",
         current_value, ", error:", err)
     end
 
-    kong.log.debug("[request-transformer] template `", current_value,
+    kong.log.debug("[verifi-request-transformer] template `", current_value,
       "` rendered to `", res, "`")
 
     return i, current_name, res
@@ -219,6 +219,25 @@ local function transform_headers(conf)
   for _, name, value in iter(conf.append.headers) do
     if name:lower() ~= HOST then
       headers[name] = append_value(headers[name], value)
+    end
+  end
+
+  -- Append header(s) with body data
+  if conf.add.bodytoheaders then
+
+    local data = kong.request.get_raw_body();
+
+    if data then
+      local decodedData = cjson.decode(data)
+
+      for i, name in ipairs(conf.add.bodytoheaders) do
+        name = name:lower()
+        if not headers[name] and name ~= HOST then
+          if decodedData[name] then
+            headers[name] = decodedData[name]
+          end
+        end
+      end
     end
   end
 
@@ -492,11 +511,11 @@ local function transform_uri(conf)
 
     local res, err = param_value(conf.replace.uri, conf.replace)
     if err then
-      error("[request-transformer] failed to render the template " ..
+      error("[verifi-request-transformer] failed to render the template " ..
         tostring(conf.replace.uri) .. ", error:" .. err)
     end
 
-    kong.log.debug(DEBUG, "[request-transformer] template `", conf.replace.uri,
+    kong.log.debug(DEBUG, "[verifi-request-transformer] template `", conf.replace.uri,
       "` rendered to `", res, "`")
 
     if res then
@@ -506,6 +525,8 @@ local function transform_uri(conf)
 end
 
 function _M.execute(conf)
+  kong.log.debug(DEBUG, "Hello Jack!")
+
   clear_environment()
   transform_uri(conf)
   transform_method(conf)
